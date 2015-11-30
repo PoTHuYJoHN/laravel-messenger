@@ -82,6 +82,6 @@ class Message extends Eloquent
      */
     public function archived_message()
     {
-        return $this->belongsToMany('App\User', 'archived_messages');
+        return $this->belongsToMany('App\User', 'archived_messages')->withTimestamps();
     }
 }
