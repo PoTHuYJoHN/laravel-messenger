@@ -74,4 +74,14 @@ class Message extends Eloquent
     {
         return $this->participants()->where('user_id', '!=', $this->user_id);
     }
+
+    /**
+     * Archived messages
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\BelongsToMany
+     */
+    public function archived_message()
+    {
+        return $this->belongsToMany('App\User', 'archived_messages');
+    }
 }
