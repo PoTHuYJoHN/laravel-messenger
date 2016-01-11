@@ -65,7 +65,7 @@ class Thread extends Eloquent
      */
     public function participants()
     {
-        return $this->hasMany('Cmgmyr\Messenger\Models\Participant');
+        return $this->hasMany('Cmgmyr\Messenger\Models\Participant')->withTrashed();
     }
 
     /**
