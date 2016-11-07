@@ -69,7 +69,7 @@ class Thread extends Eloquent
      */
     public function participants()
     {
-        return $this->hasMany(Models::classname(Participant::class), 'thread_id', 'id');
+        return $this->hasMany(Models::classname(Participant::class), 'thread_id', 'id')->withTrashed();
     }
 
     /**
