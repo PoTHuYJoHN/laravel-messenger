@@ -1,4 +1,6 @@
-<?php namespace Cmgmyr\Messenger\tests;
+<?php
+
+namespace Cmgmyr\Messenger\Test;
 
 use Illuminate\Database\Eloquent\Model as Eloquent;
 
@@ -14,7 +16,7 @@ class EloquentMessageTest extends TestCase
     public function it_should_get_the_recipients_of_a_message()
     {
         $message = $this->faktory->build('message');
-        $thread = $this->faktory->create('thread');
+        $thread  = $this->faktory->create('thread');
 
         $thread->messages()->saveMany([$message]);
 

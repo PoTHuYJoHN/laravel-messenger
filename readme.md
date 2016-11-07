@@ -1,8 +1,11 @@
 [![Build Status](https://img.shields.io/travis/cmgmyr/laravel-messenger.svg?style=flat-square)](https://travis-ci.org/cmgmyr/laravel-messenger)
-[![Code Climate](https://img.shields.io/codeclimate/github/cmgmyr/laravel-messenger.svg?style=flat-square)](https://codeclimate.com/github/cmgmyr/laravel-messenger)
+[![Scrutinizer](https://img.shields.io/scrutinizer/g/cmgmyr/laravel-messenger.svg?style=flat-square)](https://scrutinizer-ci.com/g/cmgmyr/laravel-messenger/)
+[![Scrutinizer Coverage](https://img.shields.io/scrutinizer/coverage/g/cmgmyr/laravel-messenger.svg?style=flat-square)](https://scrutinizer-ci.com/g/cmgmyr/laravel-messenger/)
 [![Latest Version](https://img.shields.io/github/release/cmgmyr/laravel-messenger.svg?style=flat-square)](https://github.com/cmgmyr/laravel-messenger/releases)
 [![Total Downloads](https://img.shields.io/packagist/dt/cmgmyr/messenger.svg?style=flat-square)](https://packagist.org/packages/cmgmyr/messenger)
 [![Software License](https://img.shields.io/badge/license-MIT-brightgreen.svg?style=flat-square)](LICENSE)
+[![Stories in Ready](https://badge.waffle.io/cmgmyr/laravel-messenger.svg?label=ready&title=Ready)](http://waffle.io/cmgmyr/laravel-messenger)
+[![Get help on Codementor](https://cdn.codementor.io/badges/get_help_github.svg)](https://www.codementor.io/cmgmyr)
 
 # Laravel Messenger
 This package will allow you to add a full user messaging system into your Laravel application.
@@ -43,15 +46,25 @@ Add the service provider to `config/app.php` under `providers`:
         Cmgmyr\Messenger\MessengerServiceProvider::class,
     ]
 
-Publish Assets
+Publish config:
 
-	php artisan vendor:publish --provider="Cmgmyr\Messenger\MessengerServiceProvider"
+    php artisan vendor:publish --provider="Cmgmyr\Messenger\MessengerServiceProvider" --tag="config"
 	
 Update config file to reference your User Model:
 
-	config/messenger.php
+    config/messenger.php
 	
 Create a `users` table if you do not have one already. If you need one, simply use [this example](https://github.com/cmgmyr/laravel-messenger/tree/master/src/Cmgmyr/Messenger/examples/create_users_table.php) as a starting point, then migrate.
+
+**(Optional)** Define names of database tables in package config file if you don't want to use default ones:
+
+    'messages_table' => 'messenger_messages',
+    'participants_table' => 'messenger_participants',
+    'threads_table' => 'messenger_threads',
+    
+Publish migrations:
+
+    php artisan vendor:publish --provider="Cmgmyr\Messenger\MessengerServiceProvider" --tag="migrations"
 
 Migrate your database:
 
@@ -62,7 +75,7 @@ Add the trait to your user model:
     use Cmgmyr\Messenger\Traits\Messagable;
     
     class User extends Model {
-    	use Messagable;
+        use Messagable;
     }
 
 
@@ -79,9 +92,9 @@ __Note:__ These examples use the [laravelcollective/html](http://laravelcollecti
 
 
 ## Contributing? 
-Please format your code before creating a pull-request:
+Please format your code before creating a pull-request. This will format all files as specified in `.php_cs`:
 
-    vendor/bin/php-cs-fixer fix --level psr2 .
+    vendor/bin/php-cs-fixer fix .
 
 ## Security
 

@@ -1,70 +1,70 @@
-<?php namespace Cmgmyr\Messenger\Traits;
+<?php
 
-use Cmgmyr\Messenger\Models\Thread;
+namespace Cmgmyr\Messenger\Traits;
+
+use Cmgmyr\Messenger\Models\Message;
+use Cmgmyr\Messenger\Models\Models;
 use Cmgmyr\Messenger\Models\Participant;
+use Cmgmyr\Messenger\Models\Thread;
 
 trait Messagable
 {
     /**
-     * Message relationship
+     * Message relationship.
      *
      * @return \Illuminate\Database\Eloquent\Relations\HasMany
      */
     public function messages()
     {
-        return $this->hasMany('Cmgmyr\Messenger\Models\Message');
+        return $this->hasMany(Models::classname(Message::class));
     }
 
     /**
-     * Thread relationship
+     * Participants relationship.
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\HasMany
+     */
+    public function participants()
+    {
+        return $this->hasMany(Models::classname(Participant::class));
+    }
+
+    /**
+     * Thread relationship.
      *
      * @return \Illuminate\Database\Eloquent\Relations\belongsToMany
      */
     public function threads()
     {
-        return $this->belongsToMany('Cmgmyr\Messenger\Models\Thread', 'participants');
+        return $this->belongsToMany(
+            Models::classname(Thread::class),
+            Models::table('participants'),
+            'user_id',
+            'thread_id'
+        );
     }
 
     /**
-     * Returns the new messages count for user
+     * Returns the new messages count for user.
      *
      * @return int
      */
-    public function newMessagesCount()
+    public function newThreadsCount()
     {
-        return count($this->threadsWithNewMessages());
+        return $this->threadsWithNewMessages()->count();
     }
 
     /**
-     * Returns all threads with new messages
+     * Returns all threads with new messages.
      *
-     * @return array
+     * @return \Illuminate\Database\Eloquent\Relations\belongsToMany
      */
     public function threadsWithNewMessages()
     {
-        $threadsWithNewMessages = [];
-        $participants = Participant::where('user_id', $this->id)->lists('last_read', 'thread_id');
-
-        /**
-         * @todo: see if we can fix this more in the future.
-         * Illuminate\Foundation is not available through composer, only in laravel/framework which
-         * I don't want to include as a dependency for this package...it's overkill. So let's
-         * exclude this check in the testing environment.
-         */
-        if (getenv('APP_ENV') == 'testing' || !str_contains(\Illuminate\Foundation\Application::VERSION, '5.0')) {
-            $participants = $participants->all();
-        }
-
-        if ($participants) {
-            $threads = Thread::whereIn('id', array_keys($participants))->get();
-
-            foreach ($threads as $thread) {
-                if ($thread->updated_at > $participants[$thread->id]) {
-                    $threadsWithNewMessages[] = $thread->id;
-                }
-            }
-        }
-
-        return $threadsWithNewMessages;
+        return $this->threads()
+            ->where(function ($q) {
+                $q->whereNull(Models::table('participants') . '.last_read');
+                $q->orWhere(Models::table('threads') . '.updated_at', '>', $this->getConnection()->raw(Models::table('participants') . '.last_read'));
+            })->get();
     }
 }

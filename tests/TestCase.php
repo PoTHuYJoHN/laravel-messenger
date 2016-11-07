@@ -1,11 +1,15 @@
-<?php namespace Cmgmyr\Messenger\tests;
+<?php
+
+namespace Cmgmyr\Messenger\Test;
 
 date_default_timezone_set('America/New_York');
 
-use Illuminate\Database\Capsule\Manager as DB;
 use AdamWathan\Faktory\Faktory;
+use Cmgmyr\Messenger\Models\Models;
+use Illuminate\Database\Capsule\Manager as DB;
+use Orchestra\Testbench\TestCase as Orchestra;
 
-class TestCase extends \PHPUnit_Framework_TestCase
+class TestCase extends Orchestra
 {
     /**
      * @var \AdamWathan\Faktory\Faktory
@@ -13,21 +17,40 @@ class TestCase extends \PHPUnit_Framework_TestCase
     protected $faktory;
 
     /**
-     * Set up the database, migrations, and initial data
+     * Set up the database, migrations, and initial data.
      */
     public function setUp()
     {
+        parent::setUp();
+
         $this->configureDatabase();
         $this->migrateTables();
-        $this->faktory = new Faktory;
+        $this->faktory  = new Faktory;
         $load_factories = function ($faktory) {
-            require(__DIR__ . '/factories.php');
+            require __DIR__ . '/factories.php';
         };
         $load_factories($this->faktory);
+
+        $userModel = User::class;
+        Models::setUserModel($userModel);
     }
 
     /**
-     * Configure the database
+     * Define environment setup.
+     *
+     * @param  \Illuminate\Foundation\Application  $app
+     *
+     * @return void
+     */
+    protected function getEnvironmentSetUp($app)
+    {
+        $app['config']->set('messenger.message_model', 'Cmgmyr\Messenger\Models\Message');
+        $app['config']->set('messenger.participant_model', 'Cmgmyr\Messenger\Models\Participant');
+        $app['config']->set('messenger.thread_model', 'Cmgmyr\Messenger\Models\Thread');
+    }
+
+    /**
+     * Configure the database.
      */
     private function configureDatabase()
     {
@@ -47,7 +70,7 @@ class TestCase extends \PHPUnit_Framework_TestCase
     }
 
     /**
-     * Run the migrations for the database
+     * Run the migrations for the database.
      */
     private function migrateTables()
     {
@@ -60,7 +83,7 @@ class TestCase extends \PHPUnit_Framework_TestCase
     }
 
     /**
-     * Create the users table in the database
+     * Create the users table in the database.
      */
     private function createUsersTable()
     {
@@ -77,7 +100,7 @@ class TestCase extends \PHPUnit_Framework_TestCase
     }
 
     /**
-     * Create some users for the tests to use
+     * Create some users for the tests to use.
      */
     private function seedUsersTable()
     {
@@ -87,7 +110,7 @@ class TestCase extends \PHPUnit_Framework_TestCase
     }
 
     /**
-     * Create the threads table in the database
+     * Create the threads table in the database.
      */
     private function createThreadsTable()
     {
@@ -103,7 +126,7 @@ class TestCase extends \PHPUnit_Framework_TestCase
     }
 
     /**
-     * Create the messages table in the database
+     * Create the messages table in the database.
      */
     private function createMessagesTable()
     {
@@ -120,7 +143,7 @@ class TestCase extends \PHPUnit_Framework_TestCase
     }
 
     /**
-     * Create the participants table in the database
+     * Create the participants table in the database.
      */
     private function createParticipantsTable()
     {

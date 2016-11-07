@@ -1,9 +1,12 @@
-<?php namespace Cmgmyr\Messenger\tests;
+<?php
+
+namespace Cmgmyr\Messenger\Test;
 
 use Carbon\Carbon;
+use Cmgmyr\Messenger\Models\Models;
+use Cmgmyr\Messenger\Models\Participant;
 use Cmgmyr\Messenger\Models\Thread;
 use Illuminate\Database\Eloquent\Model as Eloquent;
-use Illuminate\Support\Facades\Config;
 use ReflectionClass;
 
 class EloquentThreadTest extends TestCase
@@ -15,17 +18,48 @@ class EloquentThreadTest extends TestCase
     }
 
     /**
-     * Activate private/protected methods for testing
+     * Activate private/protected methods for testing.
      *
      * @param $name
      * @return \ReflectionMethod
      */
     protected static function getMethod($name)
     {
-        $class = new ReflectionClass('Cmgmyr\Messenger\Models\Thread');
+        $class = new ReflectionClass(Thread::class);
         $method = $class->getMethod($name);
         $method->setAccessible(true);
+
         return $method;
+    }
+
+    /** @test */
+    public function search_specific_thread_by_subject()
+    {
+        $this->faktory->create('thread', ['id' => 1, 'subject' => 'first subject']);
+        $this->faktory->create('thread', ['id' => 2, 'subject' => 'second subject']);
+
+        $threads = Thread::getBySubject('first subject');
+
+        $this->assertEquals(1, $threads->count());
+        $this->assertEquals(1, $threads->first()->id);
+        $this->assertEquals('first subject', $threads->first()->subject);
+    }
+
+    /** @test */
+    public function search_threads_by_subject()
+    {
+        $this->faktory->create('thread', ['id' => 1, 'subject' => 'first subject']);
+        $this->faktory->create('thread', ['id' => 2, 'subject' => 'second subject']);
+
+        $threads = Thread::getBySubject('%subject');
+
+        $this->assertEquals(2, $threads->count());
+
+        $this->assertEquals(1, $threads->first()->id);
+        $this->assertEquals('first subject', $threads->first()->subject);
+
+        $this->assertEquals(2, $threads->last()->id);
+        $this->assertEquals('second subject', $threads->last()->subject);
     }
 
     /** @test */
@@ -42,12 +76,12 @@ class EloquentThreadTest extends TestCase
     public function it_should_return_the_latest_message()
     {
         $oldMessage = $this->faktory->build('message', [
-            'created_at' => Carbon::yesterday()
+            'created_at' => Carbon::yesterday(),
         ]);
 
         $newMessage = $this->faktory->build('message', [
             'created_at' => Carbon::now(),
-            'body' => 'This is the most recent message'
+            'body' => 'This is the most recent message',
         ]);
 
         $thread = $this->faktory->create('thread');
@@ -73,8 +107,8 @@ class EloquentThreadTest extends TestCase
     public function it_should_get_all_thread_participants()
     {
         $thread = $this->faktory->create('thread');
-        $participants = $thread->participantsUserIds();
-        $this->assertCount(0, $participants);
+        $participantIds = $thread->participantsUserIds();
+        $this->assertCount(0, $participantIds);
 
         $user_1 = $this->faktory->build('participant');
         $user_2 = $this->faktory->build('participant', ['user_id' => 2]);
@@ -82,10 +116,15 @@ class EloquentThreadTest extends TestCase
 
         $thread->participants()->saveMany([$user_1, $user_2, $user_3]);
 
-        $participants = $thread->participantsUserIds();
-        $this->assertCount(3, $participants);
+        $participantIds = $thread->participantsUserIds();
+        $this->assertCount(3, $participantIds);
+        $this->assertEquals(2, $participantIds[1]);
 
-        $this->assertInternalType('object', $participants);
+        $participantIds = $thread->participantsUserIds(999);
+        $this->assertCount(4, $participantIds);
+        $this->assertEquals(999, end($participantIds));
+
+        $this->assertInternalType('array', $participantIds);
     }
 
     /** @test */
@@ -140,15 +179,37 @@ class EloquentThreadTest extends TestCase
     }
 
     /** @test */
-    public function it_should_add_participants_to_a_thread()
+    public function it_should_add_a_participant_to_a_thread()
+    {
+        $participant = 1;
+
+        $thread = $this->faktory->create('thread');
+
+        $thread->addParticipant($participant);
+
+        $this->assertEquals(1, $thread->participants()->count());
+    }
+
+    /** @test */
+    public function it_should_add_participants_to_a_thread_with_array()
     {
         $participants = [1, 2, 3];
 
         $thread = $this->faktory->create('thread');
 
-        $thread->addParticipants($participants);
+        $thread->addParticipant($participants);
 
         $this->assertEquals(3, $thread->participants()->count());
+    }
+
+    /** @test */
+    public function it_should_add_participants_to_a_thread_with_arguments()
+    {
+        $thread = $this->faktory->create('thread');
+
+        $thread->addParticipant(1, 2);
+
+        $this->assertEquals(2, $thread->participants()->count());
     }
 
     /** @test */
@@ -195,7 +256,7 @@ class EloquentThreadTest extends TestCase
 
         $newParticipant = $thread->getParticipantFromUser($userId);
 
-        $this->assertInstanceOf('\Cmgmyr\Messenger\Models\Participant', $newParticipant);
+        $this->assertInstanceOf(Participant::class, $newParticipant);
     }
 
     /**
@@ -235,23 +296,21 @@ class EloquentThreadTest extends TestCase
     {
         $method = self::getMethod('createSelectString');
         $thread = new Thread();
-        $tableName = 'users';
-        $thread->setUsersTable($tableName);
+        $tableName = Models::table('users');
 
         $columns = ['name'];
         $select = $method->invokeArgs($thread, [$columns]);
-        $this->assertEquals("(" . Eloquent::getConnectionResolver()->getTablePrefix() . $tableName . ".name) as name", $select);
+        $this->assertEquals('(' . Eloquent::getConnectionResolver()->getTablePrefix() . $tableName . '.name) as name', $select);
 
         $columns = ['name', 'email'];
         $select = $method->invokeArgs($thread, [$columns]);
-        $this->assertEquals("(" . Eloquent::getConnectionResolver()->getTablePrefix() . $tableName . ".name || ' ' || " . Eloquent::getConnectionResolver()->getTablePrefix() . $tableName . ".email) as name", $select);
+        $this->assertEquals('(' . Eloquent::getConnectionResolver()->getTablePrefix() . $tableName . ".name || ' ' || " . Eloquent::getConnectionResolver()->getTablePrefix() . $tableName . '.email) as name', $select);
     }
 
     /** @test */
     public function it_should_get_participants_string()
     {
         $thread = $this->faktory->create('thread');
-        $thread->setUsersTable('users');
 
         $participant_1 = $this->faktory->build('participant');
         $participant_2 = $this->faktory->build('participant', ['user_id' => 2]);
@@ -260,13 +319,13 @@ class EloquentThreadTest extends TestCase
         $thread->participants()->saveMany([$participant_1, $participant_2, $participant_3]);
 
         $string = $thread->participantsString();
-        $this->assertEquals("Chris Gmyr, Adam Wathan, Taylor Otwell", $string);
+        $this->assertEquals('Chris Gmyr, Adam Wathan, Taylor Otwell', $string);
 
         $string = $thread->participantsString(1);
-        $this->assertEquals("Adam Wathan, Taylor Otwell", $string);
+        $this->assertEquals('Adam Wathan, Taylor Otwell', $string);
 
         $string = $thread->participantsString(1, ['email']);
-        $this->assertEquals("adam@test.com, taylor@test.com", $string);
+        $this->assertEquals('adam@test.com, taylor@test.com', $string);
     }
 
     /** @test */
@@ -282,5 +341,118 @@ class EloquentThreadTest extends TestCase
         $this->assertTrue($thread->hasParticipant(1));
         $this->assertTrue($thread->hasParticipant(2));
         $this->assertFalse($thread->hasParticipant(3));
+    }
+
+    /** @test */
+    public function it_should_remove_a_single_participant()
+    {
+        $thread = $this->faktory->create('thread');
+
+        $participant_1 = $this->faktory->build('participant');
+        $participant_2 = $this->faktory->build('participant', ['user_id' => 2]);
+
+        $thread->participants()->saveMany([$participant_1, $participant_2]);
+
+        $thread->removeParticipant(2);
+
+        $this->assertEquals(1, $thread->participants()->count());
+    }
+
+    /** @test */
+    public function it_should_remove_a_group_of_participants_with_array()
+    {
+        $thread = $this->faktory->create('thread');
+
+        $participant_1 = $this->faktory->build('participant');
+        $participant_2 = $this->faktory->build('participant', ['user_id' => 2]);
+
+        $thread->participants()->saveMany([$participant_1, $participant_2]);
+
+        $thread->removeParticipant([1, 2]);
+
+        $this->assertEquals(0, $thread->participants()->count());
+    }
+
+    /** @test */
+    public function it_should_remove_a_group_of_participants_with_arguments()
+    {
+        $thread = $this->faktory->create('thread');
+
+        $participant_1 = $this->faktory->build('participant');
+        $participant_2 = $this->faktory->build('participant', ['user_id' => 2]);
+
+        $thread->participants()->saveMany([$participant_1, $participant_2]);
+
+        $thread->removeParticipant(1, 2);
+
+        $this->assertEquals(0, $thread->participants()->count());
+    }
+
+    /** @test */
+    public function it_should_get_all_unread_messages_for_user()
+    {
+        $thread = $this->faktory->create('thread');
+
+        $participant_1 = $this->faktory->build('participant');
+        $participant_2 = $this->faktory->build('participant', ['user_id' => 2]);
+
+        $message_1 = $this->faktory->build('message', [
+            'created_at' => Carbon::now(),
+            'body'       => 'Message 1',
+        ]);
+
+        $thread->participants()->saveMany([$participant_1, $participant_2]);
+        $thread->messages()->saveMany([$message_1]);
+
+        $thread->markAsRead($participant_2->user_id);
+
+        // Simulate delay after last read
+        sleep(1);
+
+        $message_2 = $this->faktory->build('message', [
+            'created_at' => Carbon::now(),
+            'body'       => 'Message 2',
+        ]);
+
+        $thread->messages()->saveMany([$message_2]);
+
+        $this->assertEquals('Message 1', $thread->userUnreadMessages(1)->first()->body);
+        $this->assertCount(2, $thread->userUnreadMessages(1));
+
+        $this->assertEquals('Message 2', $thread->userUnreadMessages(2)->first()->body);
+        $this->assertCount(1, $thread->userUnreadMessages(2));
+    }
+
+    /** @test */
+    public function it_should_get_count_of_all_unread_messages_for_user()
+    {
+        $thread = $this->faktory->create('thread');
+
+        $participant_1 = $this->faktory->build('participant');
+        $participant_2 = $this->faktory->build('participant', ['user_id' => 2]);
+
+        $message_1 = $this->faktory->build('message', [
+            'created_at' => Carbon::now(),
+            'body'       => 'Message 1',
+        ]);
+
+        $thread->participants()->saveMany([$participant_1, $participant_2]);
+        $thread->messages()->saveMany([$message_1]);
+
+        $thread->markAsRead($participant_2->user_id);
+
+        // Simulate delay after last read
+        sleep(1);
+
+        $message_2 = $this->faktory->build('message', [
+            'created_at' => Carbon::now(),
+            'body'       => 'Message 2',
+        ]);
+
+        $thread->messages()->saveMany([$message_2]);
+
+        $this->assertEquals(2, $thread->userUnreadMessagesCount(1));
+
+        $this->assertEquals(1, $thread->userUnreadMessagesCount(2));
     }
 }
